@@ -4,13 +4,23 @@ import Head from 'next/head'
 import Image from 'next/image'
 import styles from '../../styles/Home.module.css'
 
-import { Table, Badge, Avatar, SideSheet, Spinner, Pane } from 'evergreen-ui'
+import { Table, Badge, Avatar, SideSheet, Spinner, Pane, Heading, Button } from 'evergreen-ui'
 
+import TimeAgo from 'javascript-time-ago'
+
+// English.
+import en from 'javascript-time-ago/locale/en'
+
+TimeAgo.addDefaultLocale(en)
+
+// Create formatter (English).
+const timeAgo = new TimeAgo('en-US')
 
 export default function FlightBoard() {
 
 	const [flights, setFlights] = useState({})
 	const [flightsOrig, setFlightsOrig] = useState({})
+	const [sideFlight, setSideFlight] = useState({})
 	const [isShown, setIsShown] = useState(false)
 
 	const [loading, setLoading] = useState(true)
@@ -30,8 +40,11 @@ export default function FlightBoard() {
 		fetch(url, options)
 			.then(res => res.json())
 			.then(json => {
-				setFlights(json)
-				setFlightsOrig(json)
+				let ar = json.departures.filter(item => !(item.status == 'Departed'));
+
+				console.log('arrrr', ar)
+				setFlights({ departures: ar })
+				setFlightsOrig({ departures: ar })
 				setLoading(false)
 			})
 			.catch(err => console.error('error:' + err));
@@ -50,26 +63,68 @@ export default function FlightBoard() {
 		return;
 	}
 
+
+	const openSideSheet = (flight) => {
+		setSideFlight(flight)
+		setIsShown(true)
+	}
+
 	console.log('setFlightsFilter', flights)
 
 
 	return(
-	    <Pane 
-	    	border="default"
-	    	is="section"
-	    >
-    		<SideSheet isShown={isShown} onCloseComplete={() => setIsShown(false)}>hi</SideSheet>
+	    <Pane border="none" is="section">
+    		<SideSheet isShown={isShown} onCloseComplete={() => setIsShown(false)}>
+    			<Pane display="flex" padding={16} background="tint2" borderRadius={3}>
+				  <Pane flex={1} alignItems="center" display="flex">
+				    <Heading size={600}>{sideFlight.number}</Heading>
+				  </Pane>
+				  <Pane>
+				    {/* Below you can see the marginRight property on a Button. */}
+				    <Button marginRight={16}>Button</Button>
+				    <Button appearance="primary">Primary Button</Button>
+				  </Pane>
+				</Pane>
+				<Pane display="flex" padding={16} borderRadius={3}>
+					<Pane flex={1} alignItems="center" display="flex">
+					    <Heading size={500}>Calgary to {sideFlight.movement?.airport?.name}</Heading>
+					  </Pane>
+					  <Pane>
+					    {sideFlight.status == 'CanceledUncertain' && <Badge color="red">Canceled</Badge> }
+			        	{sideFlight.status == 'Canceled' && <Badge color="red">Canceled</Badge>}
+
+			        	{sideFlight.status == 'Expected' && <Badge color="green">On-Time</Badge>}
+
+			        	{sideFlight.status == 'Delayed' && <Badge color="yellow">Delayed</Badge>}
+
+
+			        	{sideFlight.status == 'Unknown' && <Badge color="red">N/A</Badge> }
+			        	{sideFlight.status == 'Departed' && <Badge color="blue">Departed</Badge> }
+			        	{sideFlight.status == 'GateClosed' && <Badge color="teal">Gate Closed</Badge> }
+			        	{sideFlight.status == 'Boarding' && <Badge color="purple">Boarding</Badge> }	
+					  </Pane>
+				</Pane>
+
+				<Pane padding={16}>
+					{
+				    	sideFlight.movement ?
+				    		 <>Scheduled {timeAgo.format(new Date(sideFlight.movement?.actualTimeUtc))}</>
+				    	:
+				    		<>N/A</>
+				    }
+				</Pane>
+    		</SideSheet>
     		
 	    	{!loading ?
             	<div>
             		<Table>
-					  <Table.Head>
+					  <Table.Head style={{ position: 'sticky', top: 0, zIndex: '10' }}>
 					    <Table.SearchHeaderCell 
 					    	placeholder={`Search Flight Number`}
 					    	onChange={(e) => filterTable(e)}
 					    />
 					    <Table.TextHeaderCell>Status</Table.TextHeaderCell>
-					    <Table.TextHeaderCell>Terminal</Table.TextHeaderCell>
+					    <Table.TextHeaderCell>Departure</Table.TextHeaderCell>
 					  </Table.Head>
 					  <Table.Body>
 
@@ -77,12 +132,9 @@ export default function FlightBoard() {
                 		flights.departures.map((flight, index) => {
 
                 			let logo = flight.number.match(/^(\S+)\s(.*)/).slice(1)
-                			console.log('logo', logo)
-
-                			https://content.airhex.com/content/logos/airlines_WG_100_100_s.png
 
                 			return(
-                				<Table.Row key={flight.number} isSelectable onSelect={() => setIsShown(true)}>
+                				<Table.Row key={flight.number} isSelectable onSelect={() => openSideSheet(flight)}>
 							        <Table.TextCell>
 							        	<Avatar
 										  src={`https://content.airhex.com/content/logos/airlines_${logo[0]}_100_100_s.png?background=fff&md5apikey=4d5669b5107fdc240dba0f03961c48e4`}
@@ -90,27 +142,27 @@ export default function FlightBoard() {
 										  size={20}
 										  marginRight={8}
 										/>
-							        	<b>{flight.number}</b> - {flight.movement.airport.name}
+							        	<b>{flight.number}</b> to {flight.movement.airport.name}
 							        </Table.TextCell>
 							        
 							        <Table.TextCell>
 							        	{flight.status == 'CanceledUncertain' && <Badge color="red">Canceled</Badge> }
-							        	{flight.status == 'Canceled' && 
-							        		<Badge color="red">Canceled</Badge>
-							        	}
+							        	{flight.status == 'Canceled' && <Badge color="red">Canceled</Badge>}
 
-							        	{flight.status == 'Expected' && <Badge color="green">On-Time</Badge> }
-							        	{flight.status == 'Delayed' && <Badge color="yellow">Delayed</Badge> }
+							        	{flight.status == 'Expected' && <Badge color="green">On-Time</Badge>}
+
+							        	{flight.status == 'Delayed' && <Badge color="yellow">Delayed</Badge>}
+
+
 							        	{flight.status == 'Unknown' && <Badge color="red">N/A</Badge> }
 							        	{flight.status == 'Departed' && <Badge color="blue">Departed</Badge> }
 							        	{flight.status == 'GateClosed' && <Badge color="teal">Gate Closed</Badge> }
 							        	{flight.status == 'Boarding' && <Badge color="purple">Boarding</Badge> }	
-							        	
 
 							        </Table.TextCell>
 							        <Table.TextCell>
-							        	{flight.movement.terminal ?
-							        		<>Terminal {flight.movement.terminal}</>
+							        	{flight.movement.actualTimeUtc ?
+							        		<>Scheduled {timeAgo.format(new Date(flight.movement.actualTimeUtc))}</>
 							        	:
 							        		<>N/A</>
 							        	}
