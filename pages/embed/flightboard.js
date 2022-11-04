@@ -27,7 +27,31 @@ export default function FlightBoard() {
 
 	useEffect(() => {
 
-		const url = 'https://aerodatabox.p.rapidapi.com/flights/airports/icao/CYYC/2022-11-03T19:35/2022-11-04T07:30?direction=Departure&withCancelled=true&withCodeshared=true&withLocation=false';
+		let newDate = new Date()
+
+		let tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+    	let localISOTime = (new Date(Date.now() - tzoffset)).toISOString().substring(0, 16);
+    
+    	console.log('localllllll', localISOTime)  // => '2015-01-26T06:40:36.181'
+
+		//let timeLater = newDate.setHours(newDate.getHours() + 12);
+		let timeLater = newDate.setTime(newDate.getTime() + (12*60*60*1000));
+		let par = new Date(timeLater)
+
+		let localISOTimeLater = (new Date(par - tzoffset)).toISOString().substring(0, 16);
+
+		console.log('timeLater', localISOTimeLater)
+
+
+		//let newtime = timeNow.toISOString()
+		//let timeLaterNew = Date.parse(timeLater)t
+
+
+
+		//console.log('newtime', isoFinal)
+
+		const url = 
+			`https://aerodatabox.p.rapidapi.com/flights/airports/icao/CYYC/${localISOTime}/${localISOTimeLater}?direction=Departure&withCancelled=true&withCodeshared=true&withLocation=false`;
 
 		const options = {
 		  method: 'GET',
@@ -42,7 +66,8 @@ export default function FlightBoard() {
 			.then(json => {
 				let ar = json.departures.filter(item => !(item.status == 'Departed'));
 
-				console.log('arrrr', ar)
+				let sort = ar.sort(function(a,b){ return new Date(a.movement?.actualTimeUtc) - new Date(b.movement?.actualTimeUtc);});
+
 				setFlights({ departures: ar })
 				setFlightsOrig({ departures: ar })
 				setLoading(false)
@@ -154,7 +179,7 @@ export default function FlightBoard() {
 							        	{flight.status == 'Delayed' && <Badge color="yellow">Delayed</Badge>}
 
 
-							        	{flight.status == 'Unknown' && <Badge color="red">N/A</Badge> }
+							        	{flight.status == 'Unknown' && <Badge color="red">Unknown</Badge> }
 							        	{flight.status == 'Departed' && <Badge color="blue">Departed</Badge> }
 							        	{flight.status == 'GateClosed' && <Badge color="teal">Gate Closed</Badge> }
 							        	{flight.status == 'Boarding' && <Badge color="purple">Boarding</Badge> }	
